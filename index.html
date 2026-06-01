@@ -1,0 +1,413 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Draw-O-Matic 4000</title>
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --panel: #1c1c24;
+            --accent: #55efc4;
+            --text-main: #ffffff;
+            --text-dim: #a29bfe;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            z-index: 1;
+        }
+
+        /* --- UI OVERLAY --- */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #display-area {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        #controls-panel {
+            background: var(--panel);
+            border-top: 2px solid #333;
+            padding: 15px;
+            pointer-events: auto;
+            max-height: 40vh;
+            overflow-y: auto;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+        }
+
+        .category-group {
+            margin-bottom: 15px;
+        }
+
+        .category-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .pill-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .pill {
+            background: #2d3436;
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .pill.active {
+            background: var(--accent);
+            color: #000;
+            border-color: #00b894;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(85, 239, 196, 0.3);
+        }
+
+        #spin-btn {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(85, 239, 196, 0.4);
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        #spin-btn:active { transform: scale(0.9); }
+    </style>
+</head>
+<body>
+
+    <button id="spin-btn">SPIN</button>
+
+    <div id="ui-layer">
+        <div id="display-area"></div>
+
+        <div id="controls-panel">
+            <div class="panel-header">
+                <div class="panel-title">DRAW-O-MATIC 4000</div>
+                <div class="pill" id="all-toggle" style="background: #444;">Select All</div>
+            </div>
+
+            <div class="category-group">
+                <div class="category-label">Vibes (Adjectives)</div>
+                <div class="pill-container" id="adj-pills"></div>
+            </div>
+
+            <div class="category-group">
+                <div class="category-label">Subjects (Nouns)</div>
+                <div class="pill-container" id="sub-pills"></div>
+            </div>
+
+            <div class="category-group">
+                <div class="category-label">Situations (Actions)</div>
+                <div class="pill-container" id="act-pills"></div>
+            </div>
+        </div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+<script>
+    // --- DATABASE ---
+    const DATABASE = {
+        adjectives: {
+            "Cursed & Creepy": ["RADIOACTIVE", "MELTING", "GLITCHY", "ZOMBIE", "CURSED", "SUS", "GHOSTLY", "SKELETON", "MOLDY", "ROTTEN", "SPOOKY"],
+            "Cute & UwU": ["KAWAII", "FLUFFY", "SPARKLY", "TOE-BEANED", "SQUISHY", "PASTEL", "UWU-FACED", "CHUBBY", "BABY", "RAINBOW"],
+            "Total Mayhem": ["CHAOTIC", "INVISIBLE", "ILLUSTRATED", "THREE-HEADED", "EXPLODING", "DOOMSDAY", "HYPER", "VIBRATING"],
+            "Weird & Retro": ["8-BIT", "BUFF", "NEON-GLOWING", "DERPY", "BLOCKY", "GOLDEN", "DIAMOND-COVERED", "UPSIDE-DOWN"]
+        },
+        subjects: {
+            "Gamer & Meme": ["IMPOSTOR", "NOOB", "BACON HAIR", "GUEST 666", "CREEPER", "GRIMACE", "SKIBIDI-ISH TOILET", "DOOR MONSTER", "WARDEN", "ENDERMAN", "PIKACHU", "CHARIZARD"],
+            "Pibbles & Critters": ["SACABAMBASPIS", "SEAL", "PIBBLE BABY", "SHARK-PIBBLE", "PUSHEEN", "AXOLOTL", "CAPYBARA", "TEACUP MONSTER", "FAT CAT", "PUG", "NARWHAL", "HAMSTER"],
+            "Hero & Myth": ["SPIDER-MAN", "HULK", "THANOS", "GROOT", "MEDUSA", "ZEUS", "POSEIDON", "KERMIT", "ELMO", "MINOTAUR", "WIZARD"],
+            "Foodie": ["ICE COLD COKE", "SENTIENT PIZZA", "TACO WITH EYES", "BURGER WITH ARMS", "SUSHI ROLL", "GUMMY BEAR", "PANCAKE STACK", "DONUT", "BOBA TEA", "FRENCH FRY"],
+            "Total Mayhem": ["DASH CANDOO", "ROBUX (THE DOG)", "THE GRONK", "MRS. FRITTER", "WAR-WOMBAT", "JELLY-SQUID", "DEVIL-CAT", "THREE-HEADED SQUIRREL"]
+        },
+        actions: {
+            "Meme & Dance": ["DOING THE GRIDDY", "T-POSING", "FLOSSING", "DABBING", "TAKING A SELFIE", "SAYING 'UWU'", "TOUCHING GRASS", "DRINKING GRIMACE SHAKE"],
+            "Epic Battle": ["GOING SUPER SAIYAN", "THROWING LIGHTNING", "FIGHTING A BOSS", "HOLDING A LIGHTSABER", "BREATHING FIRE", "CASTING A SPELL", "SAVING THE WORLD"],
+            "Mayhem & Mess": ["RIDING A WAR-WOMBAT", "ESCAPING 1,000 SCORPIONS", "DROWNING IN CHEESE", "FALLING IN JELLY", "BEING ABDUCTED", "EXPLODING INTO CRUMBS"],
+            "Funny & Weird": ["SEAL-SURFING", "BUILDING A TACO FORT", "VENTING", "WEARING A TUTU", "NARUTO RUNNING", "PLAYING ELECTRIC GUITAR", "SLEEPING ON A PIZZA", "STUCK IN A JAR"]
+        }
+    };
+
+    // --- STATE ---
+    let activeTags = {
+        adjectives: Object.keys(DATABASE.adjectives),
+        subjects: Object.keys(DATABASE.subjects),
+        actions: Object.keys(DATABASE.actions)
+    };
+
+    // Session Memory Tracking
+    let usedItems = {
+        adjectives: new Set(),
+        subjects: new Set(),
+        actions: new Set()
+    };
+
+    let currentText = { adj: "TAP SPIN", sub: "TO START", act: "" };
+    let state = "IDLE";
+    let spinTimer = 0;
+    let particles = [];
+    let width, height;
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- UI BUILDER ---
+    function buildPills() {
+        const containers = {
+            adjectives: document.getElementById('adj-pills'),
+            subjects: document.getElementById('sub-pills'),
+            actions: document.getElementById('act-pills')
+        };
+
+        for (const [key, categoryObj] of Object.entries(DATABASE)) {
+            const container = containers[key];
+            container.innerHTML = "";
+            Object.keys(categoryObj).forEach(tagName => {
+                const pill = document.createElement('div');
+                pill.className = `pill ${activeTags[key].includes(tagName) ? 'active' : ''}`;
+                pill.innerText = tagName;
+                pill.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleTag(key, tagName, pill);
+                };
+                container.appendChild(pill);
+            });
+        }
+    }
+
+    function toggleTag(type, tag, el) {
+        const index = activeTags[type].indexOf(tag);
+        if (index > -1) {
+            if (activeTags[type].length > 1) {
+                activeTags[type].splice(index, 1);
+                el.classList.remove('active');
+            }
+        } else {
+            activeTags[type].push(tag);
+            el.classList.add('active');
+        }
+        usedItems[type].clear();
+    }
+
+    document.getElementById('all-toggle').onclick = function(e) {
+        e.stopPropagation();
+        const allActive = Object.keys(activeTags).every(k => activeTags[k].length === Object.keys(DATABASE[k]).length);
+        for (const k in activeTags) {
+            activeTags[k] = allActive ? [Object.keys(DATABASE[k])[0]] : Object.keys(DATABASE[k]);
+            usedItems[k].clear();
+        }
+        buildPills();
+    };
+
+    function getFilteredList(type) {
+        let pool = [];
+        activeTags[type].forEach(tag => {
+            pool = pool.concat(DATABASE[type][tag]);
+        });
+        return pool.length > 0 ? pool : ["???"];
+    }
+
+    function pickUnique(type) {
+        const pool = getFilteredList(type);
+        const unused = pool.filter(item => !usedItems[type].has(item));
+        
+        if (unused.length === 0) {
+            pool.forEach(item => usedItems[type].delete(item));
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+        
+        const selection = unused[Math.floor(Math.random() * unused.length)];
+        usedItems[type].add(selection);
+        return selection;
+    }
+
+    function startSpin(e) {
+        if (e) e.stopPropagation();
+        if (state === "SPINNING") return;
+        state = "SPINNING";
+        spinTimer = 45;
+    }
+
+    // --- CANVAS ENGINE ---
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+        constructor(x, y) {
+            this.x = x; this.y = y;
+            this.size = Math.random() * 8 + 4;
+            this.speedX = (Math.random() - 0.5) * 15;
+            this.speedY = (Math.random() - 0.5) * 15;
+            this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            this.life = 1.0;
+        }
+        update() {
+            this.x += this.speedX; this.y += this.speedY;
+            this.speedY += 0.3; this.life -= 0.02;
+        }
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = Math.max(0, this.life);
+            ctx.fillRect(this.x, this.y, this.size, this.size);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function update() {
+        if (state === "SPINNING") {
+            spinTimer--;
+            
+            if (spinTimer % 2 === 0) {
+                const adjs = getFilteredList('adjectives');
+                const subs = getFilteredList('subjects');
+                const acts = getFilteredList('actions');
+                currentText.adj = adjs[Math.floor(Math.random() * adjs.length)];
+                currentText.sub = subs[Math.floor(Math.random() * subs.length)];
+                currentText.act = acts[Math.floor(Math.random() * acts.length)];
+            }
+            
+            if (spinTimer <= 0) {
+                state = "RESULT";
+                currentText.adj = pickUnique('adjectives');
+                currentText.sub = pickUnique('subjects');
+                currentText.act = pickUnique('actions');
+                for (let i = 0; i < 50; i++) particles.push(new Particle(width / 2, height / 2.5));
+            }
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            if (particles[i].life <= 0) particles.splice(i, 1);
+        }
+    }
+
+    function draw() {
+        ctx.fillStyle = "#0f0f13";
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.strokeStyle = "#1a1a24";
+        ctx.lineWidth = 1;
+        for (let x = 0; x < width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+        for (let y = 0; y < height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+
+        particles.forEach(p => p.draw());
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const cx = width / 2;
+        const cy = height / 2.5;
+        const base = Math.min(width, height) / 10;
+
+        if (state !== "IDLE") {
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.strokeStyle = "#55efc4";
+            ctx.lineWidth = 3;
+            const bw = Math.min(width * 0.9, 500);
+            const bh = base * 5.5;
+            ctx.shadowColor = "#55efc4"; ctx.shadowBlur = state === "RESULT" ? 20 : 0;
+            ctx.fillRect(cx - bw/2, cy - bh/2, bw, bh);
+            ctx.strokeRect(cx - bw/2, cy - bh/2, bw, bh);
+            ctx.shadowBlur = 0;
+        }
+
+        ctx.font = `bold ${base * 0.5}px 'Courier New'`;
+        ctx.fillStyle = "#ff7675";
+        ctx.fillText(currentText.adj, cx, cy - base * 1.3);
+
+        ctx.font = `900 ${base * 1.1}px Arial Black`;
+        ctx.fillStyle = "#fff";
+        ctx.fillText(currentText.sub, cx, cy);
+
+        ctx.font = `bold ${base * 0.5}px 'Courier New'`;
+        ctx.fillStyle = "#74b9ff";
+        ctx.fillText(currentText.act || "", cx, cy + base * 1.3);
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    document.getElementById('spin-btn').addEventListener('click', startSpin);
+    document.getElementById('display-area').addEventListener('mousedown', startSpin);
+    document.getElementById('display-area').addEventListener('touchstart', (e) => {
+        if (e.target.id === 'display-area') {
+            e.preventDefault();
+            startSpin();
+        }
+    });
+
+    buildPills();
+    loop();
+</script>
+</body>
+</html>
+
+```
