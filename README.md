@@ -1,6 +1,8 @@
 # 🎨 Draw-O-Matic 4000 👾
 
-**Draw-O-Matic 4000** is an interactive, arcade-style drawing prompt generator designed to spark wild creativity for quick drawing contests. It mixes and matches visual styles, pop culture icons, internet memes, and pure chaotic scenarios to create thousands of unique, unpredictable, and hilarious drawing prompts.
+**Draw-O-Matic 4000** is a project I vibe-coded with my grade-school-aged son. He loves to draw, and asked for an app that would give him prompts related to some of his favorite things. 
+
+It is an interactive, arcade-style drawing prompt generator designed to spark wild creativity for quick drawing contests. It mixes and matches visual styles, pop culture icons, internet memes, and pure chaotic scenarios to create thousands of unique, unpredictable, and hilarious drawing prompts.
 
 This app is tailored to balance creepy, cute, and cartoony aesthetics—bringing together everything from Roblox, Minecraft, and Marvel to baby Pibbles (pit bulls), the legendary derpy fish *Sacabambaspis*, and Ralph Lazar's chaotic *Total Mayhem* book universe.
 
