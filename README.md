@@ -9,8 +9,7 @@ This app is tailored to balance creepy, cute, and cartoony aesthetics—bringing
 ## 🚀 Live Access
 
 You can access and play the live web app directly in your browser here:
-> **[Play Draw-O-Matic 4000 Live](https://yourusername.github.io/draw-o-matic/)** *(Replace with your actual link once live)*
-
+> **[Play Draw-O-Matic 4000 Live](https://rlfordon.github.io/draw-o-matic/)** 
 ---
 
 ## ✨ Features
